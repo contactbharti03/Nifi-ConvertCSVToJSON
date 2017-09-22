@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
@@ -36,6 +37,7 @@ import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.io.InputStreamCallback;
 import org.apache.nifi.processor.io.StreamCallback;
 import org.apache.nifi.processor.util.StandardValidators;
+import org.kitesdk.data.DatasetRecordException;
 import org.kitesdk.data.spi.filesystem.CSVFileReader;
 import org.kitesdk.data.spi.filesystem.CSVProperties;
 import org.kitesdk.data.spi.filesystem.CSVUtil;
@@ -110,13 +112,6 @@ public class ConvertCsvToJSON extends AbstractProcessor {
 			.required(true).defaultValue("'").expressionLanguageSupported(true)
 			.addValidator(StandardValidators.NON_EMPTY_VALIDATOR).build();
 
-	public static final PropertyDescriptor RECORD_NAME = new PropertyDescriptor.Builder().name("Avro Record Name")
-			.description(
-					"Value to be placed in the Avro record schema \"name\" field. The value must adhere to the Avro naming "
-							+ "rules for fullname. If Expression Language is present then the evaluated value must adhere to the Avro naming rules.")
-			.required(true).expressionLanguageSupported(true)
-			.addValidator(StandardValidators.createRegexMatchingValidator(AVRO_RECORD_NAME_PATTERN)).build();
-
 	public static final PropertyDescriptor CHARSET = new PropertyDescriptor.Builder().name("Charset")
 			.description("Character encoding of CSV data.").required(true).defaultValue("UTF-8")
 			.expressionLanguageSupported(true).addValidator(StandardValidators.CHARACTER_SET_VALIDATOR).build();
@@ -140,7 +135,6 @@ public class ConvertCsvToJSON extends AbstractProcessor {
 		properties.add(DELIMITER);
 		properties.add(ESCAPE);
 		properties.add(QUOTE);
-		properties.add(RECORD_NAME);
 		properties.add(CHARSET);
 		this.properties = Collections.unmodifiableList(properties);
 
@@ -170,7 +164,11 @@ public class ConvertCsvToJSON extends AbstractProcessor {
 		final Schema schema = inferSchema(context, incomingCSV, session);
 
 		final CSVProperties props = getCSVProperties();
-
+		//final AtomicLong written = new AtomicLong(0L);
+		List<String> failures = new ArrayList<String>();
+		List<String> goodRecords = new ArrayList<String>();
+		
+		FlowFile badRecords = session.clone(incomingCSV);
 		FlowFile outgoingAvro = session.write(incomingCSV, new StreamCallback() {
 
 			@Override
@@ -183,13 +181,19 @@ public class ConvertCsvToJSON extends AbstractProcessor {
 						if (reader.hasNext()) {
 							output.write('[');
 							Record record = reader.next();
-							getLogger().info("record1: "+record);
+							goodRecords.add(record.toString());
 							IOUtils.write(record.toString(), output, "UTF-8");
 						}
 						while (reader.hasNext()) {
-							Record record = reader.next();
-							getLogger().info("Record.Next: "+record);
-							IOUtils.write("," + record.toString(), output, "UTF-8");
+							try{
+								Record record = reader.next();
+								goodRecords.add("a");
+								IOUtils.write("," + record.toString(), output, "UTF-8");
+							}catch (DatasetRecordException e) {
+                                failures.add(e.getMessage());
+                            }
+							
+							
 						}
 						output.write(']');
 					}
@@ -198,8 +202,23 @@ public class ConvertCsvToJSON extends AbstractProcessor {
 			}
 
 		});
+		
 
-		session.transfer(outgoingAvro, REL_SUCCESS);
+		session.adjustCounter("Good Records", goodRecords.size(),
+                false /* update only if file transfer is successful */);
+            session.adjustCounter("Failure", failures.size(),
+                false /* update only if file transfer is successful */);
+		if(goodRecords.size()>0){
+			session.remove(badRecords);
+			session.transfer(outgoingAvro, REL_SUCCESS);
+		}
+		else{
+			session.remove(outgoingAvro);
+			badRecords = session.putAttribute(
+                    badRecords, "errors", failures.get(0));
+			session.transfer(badRecords, REL_FAILURE);
+		}
+			
 
 	}
 
@@ -225,6 +244,7 @@ public class ConvertCsvToJSON extends AbstractProcessor {
 			header.set(context.getProperty(CSV_HEADER_DEFINITION).evaluateAttributeExpressions(incomingCSV).getValue());
 			hasHeader.set(Boolean.FALSE);
 		}
+		
 
 		if (header.get() == null) {
 			throw new ProcessException("Header not found");
@@ -237,6 +257,7 @@ public class ConvertCsvToJSON extends AbstractProcessor {
 				.escape(context.getProperty(ESCAPE).evaluateAttributeExpressions(incomingCSV).getValue())
 				.hasHeader(context.getProperty(GET_CSV_HEADER_DEFINITION_FROM_INPUT)
 						.evaluateAttributeExpressions(incomingCSV).asBoolean())
+				.header(header.get())
 				.linesToSkip(context.getProperty(HEADER_LINE_SKIP_COUNT).evaluateAttributeExpressions(incomingCSV)
 						.asInteger())
 				.build();
@@ -248,8 +269,7 @@ public class ConvertCsvToJSON extends AbstractProcessor {
 		session.read(incomingCSV, new InputStreamCallback() {
 			@Override
 			public void process(InputStream in) throws IOException {
-				avroSchema.set(CSVUtil.inferSchema(
-						context.getProperty(RECORD_NAME).evaluateAttributeExpressions(incomingCSV).getValue(), in,
+				avroSchema.set(CSVUtil.inferSchema("recordName", in,
 						props));
 			}
 		});

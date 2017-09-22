@@ -1,11 +1,10 @@
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.List;
 
-import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.nifi.processors.ConvertCsvToJSON;
@@ -13,21 +12,33 @@ import com.nifi.processors.ConvertCsvToJSON;
 public class TestConvertCsvToJSON {
 	
 	@Test
-    public void testCommaSeparatedConversion() throws IOException {
+    public void testCommaSeparatedConversionWithHeader() throws IOException {
 		TestRunner runner = TestRunners.newTestRunner(ConvertCsvToJSON.class);
-        runner.assertNotValid();
-        runner.setProperty(ConvertCsvToJSON.HEADER_LINE_SKIP_COUNT, "0");
-        runner.setProperty(ConvertCsvToJSON.RECORD_NAME, "elections");
-        runner.assertValid();
         runner.setValidateExpressionUsage(false);
         runner.enqueue(new FileInputStream(new File("src/test/resources/Test.csv")));
         runner.run();
         
         runner.assertAllFlowFilesTransferred(ConvertCsvToJSON.REL_SUCCESS, 1);
-    	List<MockFlowFile> successFiles = runner.getFlowFilesForRelationship(ConvertCsvToJSON.REL_SUCCESS);
-    
-    	for(MockFlowFile mockFile : successFiles){
-    		System.out.println(new String(mockFile.toByteArray(), "UTF-8"));
-    	}
+        long goodRecords = runner.getCounterValue("Good Records");
+        long badRecords = runner.getCounterValue("Failure");
+        Assert.assertEquals("Converts 2 rows", 2, goodRecords);
+        Assert.assertEquals("Zero Failures", 0, badRecords);
+	}
+	
+	
+	@Test
+    public void testCommaSeparatedConversionWithoutHeader() throws IOException {
+		TestRunner runner = TestRunners.newTestRunner(ConvertCsvToJSON.class);
+        runner.setProperty(ConvertCsvToJSON.GET_CSV_HEADER_DEFINITION_FROM_INPUT, "false");
+        runner.setProperty(ConvertCsvToJSON.CSV_HEADER_DEFINITION, "state,state_abbreviation,county,fips,party,candidate,votes,fraction_votes");
+        runner.setValidateExpressionUsage(false);
+        runner.enqueue(new FileInputStream(new File("src/test/resources/NoHeader.csv")));
+        runner.run();
+        
+        runner.assertAllFlowFilesTransferred(ConvertCsvToJSON.REL_SUCCESS, 1);
+        long goodRecords = runner.getCounterValue("Good Records");
+        long badRecords = runner.getCounterValue("Failure");
+        Assert.assertEquals("Converts 2 rows", 1, goodRecords);
+        Assert.assertEquals("Zero Failures", 1, badRecords);
 	}
 }
