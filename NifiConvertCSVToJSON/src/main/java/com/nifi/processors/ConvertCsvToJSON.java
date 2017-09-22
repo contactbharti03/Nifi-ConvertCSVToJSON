@@ -177,18 +177,18 @@ public class ConvertCsvToJSON extends AbstractProcessor {
 			public void process(InputStream in, OutputStream out) throws IOException {
 
 				try (CSVFileReader<Record> reader = new CSVFileReader<>(in, props, schema, Record.class)) {
-					System.out.println("schema: "+schema);
+					getLogger().info("schema: "+schema);
 					reader.initialize();
 					try (final OutputStream output = new BufferedOutputStream(out)) {
 						if (reader.hasNext()) {
 							output.write('[');
 							Record record = reader.next();
-							System.out.println("record1: "+record);
+							getLogger().info("record1: "+record);
 							IOUtils.write(record.toString(), output, "UTF-8");
 						}
 						while (reader.hasNext()) {
 							Record record = reader.next();
-							System.out.println("Record.Next: "+record);
+							getLogger().info("Record.Next: "+record);
 							IOUtils.write("," + record.toString(), output, "UTF-8");
 						}
 						output.write(']');

@@ -37,6 +37,14 @@
 			<artifactId>commons-io</artifactId>
 			<version>1.3.2</version>
 		</dependency>
+		
+		<!-- <dependency>
+    <groupId>org.apache.nifi</groupId>
+    <artifactId>nifi-kite-bundle</artifactId>
+    <version>1.1.2</version>
+    <type>pom</type>
+</dependency> -->
+		
 
 		<dependency>
 			<groupId>org.kitesdk</groupId>
@@ -110,12 +118,79 @@
 			<artifactId>opencsv</artifactId>
 			<version>2.3</version>
 		</dependency>
+		
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.10</version>
 			<scope>test</scope>
 		</dependency>
+		
+        <dependency>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-mock</artifactId>
+            <version>${nifi.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.kitesdk</groupId>
+            <artifactId>kite-minicluster</artifactId>
+            <version>${kite.version}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.kitesdk</groupId>
+                    <artifactId>kite-hadoop-cdh5-dependencies</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.kitesdk</groupId>
+                    <artifactId>kite-hbase-cdh5-dependencies</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.kitesdk</groupId>
+                    <artifactId>kite-hadoop-cdh5-test-dependencies</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.kitesdk</groupId>
+                    <artifactId>kite-hbase-cdh5-test-dependencies</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.hive</groupId>
+                    <artifactId>hive-serde</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.hive</groupId>
+                    <artifactId>hive-exec</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.hive</groupId>
+                    <artifactId>hive-service</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.flume</groupId>
+                    <artifactId>flume-ng-node</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.kitesdk</groupId>
+            <artifactId>kite-data-core</artifactId>
+            <version>${kite.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.kitesdk</groupId>
+            <artifactId>kite-hadoop-test-dependencies</artifactId>
+            <type>pom</type>
+            <scope>test</scope>
+            <version>${kite.version}</version>
+        </dependency>
+        
+		
 	</dependencies>
 
 	<build>
