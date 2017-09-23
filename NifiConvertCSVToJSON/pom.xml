@@ -44,6 +44,13 @@
     <version>1.1.2</version>
     <type>pom</type>
 </dependency> -->
+
+		<!-- https://mvnrepository.com/artifact/org.apache.avro/avro -->
+<dependency>
+    <groupId>org.apache.avro</groupId>
+    <artifactId>avro</artifactId>
+    <version>1.8.1</version>
+</dependency>
 		
 
 		<dependency>
